@@ -104,9 +104,102 @@
 
 ### 🚀 Quick Start
 
-The most recommended way to use AIClient-2-API is to start it through an automated script and configure it visually directly in the **Web UI console**.
+AIClient-2-API supports two startup paths:
 
-#### 🐳 Docker Quick Start (Recommended)
+- **Local Run (No Docker)**: best for development, debugging, and managing credentials directly on your machine
+- **Docker Deployment**: best for isolated or long-running environments
+
+If your goal is “run it locally first, then import Kiro credentials”, start with **Local Run (No Docker)** below.
+
+#### 💻 Local Run (No Docker, Recommended for Developers)
+
+**Requirements**
+- Node.js `20+`
+- npm
+- Windows, Linux, or macOS
+
+**Step 1: Install dependencies**
+
+```bash
+npm install
+```
+
+**Step 2: Prepare local config files**
+
+Windows PowerShell:
+```powershell
+Copy-Item configs/config.json.example configs/config.json
+Copy-Item configs/provider_pools.json.example configs/provider_pools.json
+```
+
+Linux/macOS:
+```bash
+cp configs/config.json.example configs/config.json
+cp configs/provider_pools.json.example configs/provider_pools.json
+```
+
+If you only want the service to start first, these are the main fields to confirm in `configs/config.json`:
+
+```json
+{
+  "REQUIRED_API_KEY": "123456",
+  "SERVER_PORT": 3000,
+  "MODEL_PROVIDER": "claude-kiro-oauth",
+  "PROVIDER_POOLS_FILE_PATH": "configs/provider_pools.json"
+}
+```
+
+> **Tip**: If you mainly want to import and use Kiro accounts first, setting `MODEL_PROVIDER` to `claude-kiro-oauth` is the simplest path.
+
+**Step 3: Start the service**
+
+```bash
+npm start
+```
+
+For local development, you can also use:
+
+```bash
+npm run start:dev
+```
+
+**Step 4: Open the Web UI**
+
+After the server starts, open your browser and visit:
+👉 [**http://localhost:3000**](http://localhost:3000)
+
+> **Default Password**: `admin123` (you can change it in the console after login, or edit `configs/pwd` directly)
+
+**Step 5: Import Kiro credentials**
+
+If you already have the Kiro / AWS Builder ID JSON from your team:
+1. Go to the **"Provider Pools"** page
+2. Find **Kiro / `claude-kiro-oauth`**
+3. Click **"Generate Authorization"**
+4. Choose **"Import AWS Account"**
+5. Upload the JSON file or paste the JSON directly
+
+You can also import through the API:
+
+```http
+POST /api/kiro/import-aws-credentials
+```
+
+For the full field format, batch import examples, and field mapping details, see the later **"Kiro AWS Account Import"** section.
+
+**When do I actually need Go?**
+
+For a normal local startup, opening the Web UI, and importing Kiro credentials, you **do not need Go**.
+
+You only need Go when enabling TLS Sidecar for special TLS scenarios such as Grok:
+
+```bash
+cd tls-sidecar
+go build -o tls-sidecar
+cd ..
+```
+
+#### 🐳 Docker Quick Start
 
 ```bash
 docker run -d -p 3000:3000 -p 8085-8086:8085-8086 -p 1455:1455 -p 19876-19880:19876-19880 --restart=always -v "your_path:/app/configs" --name aiclient2api justlikemaki/aiclient-2-api
@@ -134,7 +227,7 @@ To build from source instead of using the pre-built image, edit `docker-compose.
 2. Uncomment the `build:` section
 3. Run `docker compose up -d --build`
 
-#### 1. Run the startup script
+#### Optional Local Startup Script
 *   **Linux/macOS**: `chmod +x install-and-run.sh && ./install-and-run.sh`
 *   **Windows**: Double-click `install-and-run.bat`
 
@@ -149,7 +242,7 @@ To build from source instead of using the pre-built image, edit `docker-compose.
 After the server starts, open your browser and visit:
 👉 [**http://localhost:3000**](http://localhost:3000)
 
-> **Default Password**: `admin123` (can be changed in the console or by modifying the `pwd` file after login)
+> **Default Password**: `admin123` (can be changed in the console or by modifying `configs/pwd` after login)
 
 #### 3. Visual Configuration (Recommended)
 Go to the **"Configuration"** page, you can:
@@ -157,7 +250,7 @@ Go to the **"Configuration"** page, you can:
 *   ✅ Switch default model providers in real-time
 *   ✅ Monitor health status and real-time request logs
 
-#### 4. Local Environment Preparation (Non-Docker Users)
+#### Local TLS Sidecar Preparation (Only If Needed)
 If you are running directly on your local machine (via script or Node.js) and need to bypass TLS detection for services like Grok, please ensure:
 *   ✅ **Install Go Language**: Go to the [official Go website](https://go.dev/) to download and install (1.20+).
 *   ✅ **Manually Compile Sidecar**: Execute the following command to compile the TLS proxy component:
@@ -265,6 +358,73 @@ In the Web UI management interface, you can complete authorization configuration
 2. **Complete Authorization**: Log in to your account in the client to generate `kiro-auth-token.json` credential file
 3. **Best Practice**: Recommended to use with **Claude Code** for optimal experience
 4. **Important Notice**: Kiro service usage policy has been updated, please visit the official website for the latest usage restrictions and terms
+
+#### Kiro AWS Account Import
+If you already have a JSON credential payload containing `accessToken`, `refreshToken`, `clientId`, and `clientSecret`, you can import it directly without editing source code manually.
+
+**Method 1: Import through the Web UI (Recommended)**
+1. Start the project and open the Web UI.
+2. Go to the **"Provider Pools"** page and find the **Kiro / `claude-kiro-oauth`** card. You can also enter the Kiro authorization flow from the **"Configuration"** page.
+3. Click **"Generate Authorization"** in the top-right corner, then choose **"Import AWS Account"** in the Kiro auth method dialog.
+4. In the import modal, choose one of the following:
+   - **File upload**: upload JSON files from the AWS SSO cache directory, usually `C:\Users\{username}\.aws\sso\cache`
+   - **JSON paste**: paste the credential JSON directly into the text area
+5. After submission, the system will validate fields, save credentials into `configs/kiro/...`, and automatically link them into the provider pool. No manual `provider_pools.json` editing is required.
+
+**Method 2: Import through the API**
+The project already includes a built-in Kiro AWS import endpoint:
+
+`POST /api/kiro/import-aws-credentials`
+
+Single-account example:
+```json
+{
+  "credentials": {
+    "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
+    "accessToken": "your-access-token",
+    "refreshToken": "your-refresh-token",
+    "idcRegion": "us-east-1",
+    "authMethod": "builder-id"
+  }
+}
+```
+
+Batch import example:
+```json
+{
+  "credentials": [
+    {
+      "clientId": "your-client-id-1",
+      "clientSecret": "your-client-secret-1",
+      "accessToken": "your-access-token-1",
+      "refreshToken": "your-refresh-token-1",
+      "idcRegion": "us-east-1",
+      "authMethod": "builder-id"
+    },
+    {
+      "clientId": "your-client-id-2",
+      "clientSecret": "your-client-secret-2",
+      "accessToken": "your-access-token-2",
+      "refreshToken": "your-refresh-token-2",
+      "idcRegion": "us-east-1",
+      "authMethod": "builder-id"
+    }
+  ]
+}
+```
+
+**Field notes**
+- Required: `clientId`, `clientSecret`, `accessToken`, `refreshToken`
+- Recommended: `idcRegion`. If your source JSON uses `region`, rename it to `idcRegion` before import
+- `authMethod` should normally be `builder-id`
+- If your original JSON also contains a `provider` field, it can be ignored during import because the project handles it as `claude-kiro-oauth`
+
+**How to use it after import**
+1. Set the default provider to `claude-kiro-oauth`, or
+2. Call the routed endpoint directly via `http://localhost:3000/claude-kiro-oauth/...`
+
+After a successful import, credentials are persisted automatically and written into the provider pool, which works for both single-account usage and multi-account rotation.
 
 #### Kiro Extended Thinking (Claude Models)
 AIClient-2-API supports Kiro extended thinking when using Claude-compatible requests (`/v1/messages`) or OpenAI-compatible requests (`/v1/chat/completions`) routed to `claude-kiro-oauth`.

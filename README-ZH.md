@@ -103,9 +103,102 @@
 
 ### 🚀 快速启动
 
-使用 AIClient-2-API 最推荐的方式是通过自动化脚本启动，并直接在 **Web UI 控制台** 进行可视化配置。
+AIClient-2-API 支持两种启动方式：
 
-#### 🐳 Docker 快捷启动 (推荐)
+- **本地运行（不使用 Docker）**：适合日常开发、调试和直接管理本机凭据
+- **Docker 部署**：适合隔离运行或长期托管
+
+如果您现在的目标是“先在本机跑起来，再导入 Kiro 凭据”，请直接看下面的 **本地运行（不使用 Docker）**。
+
+#### 💻 本地运行（不使用 Docker，推荐给开发者）
+
+**环境要求**
+- Node.js `20+`
+- npm
+- Windows、Linux、macOS 均可
+
+**第 1 步：安装依赖**
+
+```bash
+npm install
+```
+
+**第 2 步：准备本地配置文件**
+
+Windows PowerShell:
+```powershell
+Copy-Item configs/config.json.example configs/config.json
+Copy-Item configs/provider_pools.json.example configs/provider_pools.json
+```
+
+Linux/macOS:
+```bash
+cp configs/config.json.example configs/config.json
+cp configs/provider_pools.json.example configs/provider_pools.json
+```
+
+如果您只是想先把服务跑起来，通常只需要在 `configs/config.json` 中确认这几个字段：
+
+```json
+{
+  "REQUIRED_API_KEY": "123456",
+  "SERVER_PORT": 3000,
+  "MODEL_PROVIDER": "claude-kiro-oauth",
+  "PROVIDER_POOLS_FILE_PATH": "configs/provider_pools.json"
+}
+```
+
+> **提示**：如果您暂时只打算导入 Kiro 账号，先把 `MODEL_PROVIDER` 设为 `claude-kiro-oauth` 最省事。
+
+**第 3 步：启动服务**
+
+```bash
+npm start
+```
+
+开发调试时也可以使用：
+
+```bash
+npm run start:dev
+```
+
+**第 4 步：打开 Web UI**
+
+服务器启动后，打开浏览器访问：
+👉 [**http://localhost:3000**](http://localhost:3000)
+
+> **默认密码**: `admin123`（登录后可在控制台修改，或直接修改 `configs/pwd` 文件）
+
+**第 5 步：导入 Kiro 凭据**
+
+如果您手里已经有领导给的 Kiro / AWS Builder ID JSON：
+1. 进入 **“提供商池”** 页面
+2. 找到 **Kiro / `claude-kiro-oauth`**
+3. 点击 **“生成授权”**
+4. 选择 **“导入 AWS 账号”**
+5. 上传 JSON 文件，或直接粘贴 JSON 内容
+
+也可以通过接口导入：
+
+```http
+POST /api/kiro/import-aws-credentials
+```
+
+详细字段格式、批量导入示例和字段映射，请继续看下文的 **“Kiro AWS 账号导入”** 章节。
+
+**什么时候才需要安装 Go？**
+
+正常本地启动、打开 Web UI、导入 Kiro 凭据，这些都 **不需要 Go**。
+
+只有在您需要启用 TLS Sidecar 来处理 Grok 等特殊 TLS 场景时，才需要额外安装 Go 并编译 sidecar：
+
+```bash
+cd tls-sidecar
+go build -o tls-sidecar
+cd ..
+```
+
+#### 🐳 Docker 快捷启动
 
 ```bash
 docker run -d -p 3000:3000 -p 8085-8086:8085-8086 -p 1455:1455 -p 19876-19880:19876-19880 --restart=always -v "指定路径:/app/configs" --name aiclient2api justlikemaki/aiclient-2-api
@@ -133,7 +226,7 @@ docker compose up -d
 2. 取消 `build:` 部分的注释
 3. 运行 `docker compose up -d --build`
 
-#### 1. 运行启动脚本
+#### 本地启动脚本（可选）
 *   **Linux/macOS**: `chmod +x install-and-run.sh && ./install-and-run.sh`
 *   **Windows**: 双击运行 `install-and-run.bat`
 
@@ -148,7 +241,7 @@ docker compose up -d
 服务器启动后，打开浏览器访问：
 👉 [**http://localhost:3000**](http://localhost:3000)
 
-> **默认密码**: `admin123` (登录后可在控制台或修改 `pwd` 文件变更)
+> **默认密码**: `admin123` (登录后可在控制台或修改 `configs/pwd` 文件变更)
 
 #### 3. 可视化配置 (推荐)
 进入 **"配置管理"** 页面，您可以直接：
@@ -156,8 +249,8 @@ docker compose up -d
 *   ✅ 实时切换默认模型提供商
 *   ✅ 监控健康状态和实时请求日志
 
-#### 4. 本地环境准备 (非 Docker 用户)
-如果您是在本地直接运行（通过脚本或 Node.js），且需要绕过 Grok 等服务的 TLS 检测，请务必：
+#### 本地 TLS Sidecar 准备（仅在需要时）
+如果您是在本地直接运行（通过脚本或 Node.js），并且需要绕过 Grok 等服务的 TLS 检测，请务必：
 *   ✅ **安装 Go 语言环境**：前往 [Go 官网](https://go.dev/) 下载并安装 (1.20+)。
 *   ✅ **手动编译 Sidecar**：执行以下命令编译 TLS 代理组件：
     ```bash
@@ -264,6 +357,73 @@ docker compose up -d
 2. **完成授权**：在客户端中登录账号，生成 `kiro-auth-token.json` 凭据文件
 3. **最佳实践**：推荐配合 **Claude Code** 使用，可获得最优体验
 4. **重要提示**：Kiro 服务使用政策已更新，请访问官方网站查看最新使用限制和条款
+
+#### Kiro AWS 账号导入
+如果您拿到的是包含 `accessToken`、`refreshToken`、`clientId`、`clientSecret` 的 JSON 凭据，可直接导入，无需手动修改源码。
+
+**方式一：通过 Web UI 页面导入（推荐）**
+1. 启动项目后，打开 Web UI。
+2. 进入 **“提供商池”** 页面，找到 **Kiro / `claude-kiro-oauth`** 对应卡片；也可以从 **“配置管理”** 页面进入 Kiro 授权入口。
+3. 点击右上角 **“生成授权”**，在弹出的 Kiro 授权方式选择框中选择 **“导入 AWS 账号”**。
+4. 在导入弹窗中，选择以下任一方式：
+   - **文件上传**：直接上传 AWS SSO cache 目录中的 JSON 文件，默认目录通常为 `C:\Users\{用户名}\.aws\sso\cache`
+   - **JSON 粘贴**：将凭据内容直接粘贴到文本框中
+5. 点击提交后，系统会自动校验字段、保存凭据到 `configs/kiro/...`，并自动关联到 provider pool，无需再手工编辑 `provider_pools.json`。
+
+**方式二：通过接口导入**
+服务端已内置 Kiro AWS 导入接口，可直接调用：
+
+`POST /api/kiro/import-aws-credentials`
+
+单个账号导入示例：
+```json
+{
+  "credentials": {
+    "clientId": "your-client-id",
+    "clientSecret": "your-client-secret",
+    "accessToken": "your-access-token",
+    "refreshToken": "your-refresh-token",
+    "idcRegion": "us-east-1",
+    "authMethod": "builder-id"
+  }
+}
+```
+
+批量导入示例：
+```json
+{
+  "credentials": [
+    {
+      "clientId": "your-client-id-1",
+      "clientSecret": "your-client-secret-1",
+      "accessToken": "your-access-token-1",
+      "refreshToken": "your-refresh-token-1",
+      "idcRegion": "us-east-1",
+      "authMethod": "builder-id"
+    },
+    {
+      "clientId": "your-client-id-2",
+      "clientSecret": "your-client-secret-2",
+      "accessToken": "your-access-token-2",
+      "refreshToken": "your-refresh-token-2",
+      "idcRegion": "us-east-1",
+      "authMethod": "builder-id"
+    }
+  ]
+}
+```
+
+**字段说明**
+- 必填字段：`clientId`、`clientSecret`、`accessToken`、`refreshToken`
+- 推荐补充：`idcRegion`。如果您现有 JSON 中字段名叫 `region`，导入前建议改名为 `idcRegion`
+- `authMethod` 建议固定为 `builder-id`
+- 如果原始 JSON 中还有 `provider` 字段，导入时可忽略；项目内部会自动按 `claude-kiro-oauth` 处理
+
+**导入后的使用方式**
+1. 将默认提供商设置为 `claude-kiro-oauth`，或
+2. 直接调用路径路由 `http://localhost:3000/claude-kiro-oauth/...`
+
+如果导入成功，凭据会自动落盘并写入 provider pool，适合后续做单账号直连或多账号轮询。
 
 #### Kiro 扩展思考 (Claude 模型)
 AIClient-2-API 在使用路由到 `claude-kiro-oauth` 的 Claude 兼容请求 (`/v1/messages`) 或 OpenAI 兼容请求 (`/v1/chat/completions`) 时支持 Kiro 扩展思考。
