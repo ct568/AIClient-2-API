@@ -5,8 +5,7 @@ import * as https from 'https';
 import { v4 as uuidv4 } from 'uuid';
 import { MODEL_PROTOCOL_PREFIX } from '../../utils/common.js';
 import { getProviderModels } from '../provider-models.js';
-import { configureAxiosProxy } from '../../utils/proxy-utils.js';
-import { getTLSSidecar } from '../../utils/tls-sidecar.js';
+import { configureAxiosProxy, configureTLSSidecar } from '../../utils/proxy-utils.js';
 import { MODEL_PROVIDER } from '../../utils/common.js';
 import { ConverterFactory } from '../../converters/ConverterFactory.js';
 import * as readline from 'readline';
@@ -145,18 +144,16 @@ export class GrokApiService {
     }
 
     _applySidecar(axiosConfig) {
-        const sidecar = getTLSSidecar();
-        if (sidecar.isReady()) {
-            const proxyUrl = this.config.PROXY_URL && this.config.PROXY_ENABLED_PROVIDERS?.includes(MODEL_PROVIDER.GROK_CUSTOM) ? this.config.PROXY_URL : null;
-            sidecar.wrapAxiosConfig(axiosConfig, proxyUrl);
-        }
-        return axiosConfig;
+        return configureTLSSidecar(axiosConfig, this.config, MODEL_PROVIDER.GROK_CUSTOM);
     }
 
     async initialize() {
         if (this.isInitialized) return;
-        try { await this.getUsageLimits(); } catch (error) { logger.warn('[Grok] Initial usage sync failed:', error.message); }
         this.isInitialized = true;
+        this.getUsageLimits()
+            .catch((error) => {
+                logger.warn('[Grok] Initial usage sync failed:', error.message);
+            });
     }
 
     async refreshToken() {
