@@ -6,6 +6,7 @@ import * as auth from '../ui-modules/auth.js';
 import * as configApi from '../ui-modules/config-api.js';
 import * as providerApi from '../ui-modules/provider-api.js';
 import * as usageApi from '../ui-modules/usage-api.js';
+import * as requestLogApi from '../ui-modules/request-log-api.js';
 import * as pluginApi from '../ui-modules/plugin-api.js';
 import * as uploadConfigApi from '../ui-modules/upload-config-api.js';
 import * as systemApi from '../ui-modules/system-api.js';
@@ -278,6 +279,16 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
     // Get usage limits for all providers
     if (method === 'GET' && pathParam === '/api/usage') {
         return await usageApi.handleGetUsage(req, res, currentConfig, providerPoolManager);
+    }
+
+    // Get structured request logs
+    if (method === 'GET' && pathParam === '/api/request-logs') {
+        return await requestLogApi.handleGetRequestLogs(req, res);
+    }
+
+    // Export structured request logs (csv/json)
+    if (method === 'GET' && pathParam === '/api/request-logs/export') {
+        return await requestLogApi.handleExportRequestLogs(req, res);
     }
 
     // Get supported providers for usage query

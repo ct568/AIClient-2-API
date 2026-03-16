@@ -2,6 +2,7 @@
 
 import { eventSource, setEventSource, elements, addLog, autoScroll } from './constants.js';
 import { t } from './i18n.js';
+import { upsertRequestLogEntry } from './request-logs-manager.js';
 
 /**
  * Server-Sent Events初始化
@@ -49,6 +50,13 @@ function initEventStream() {
     newEventSource.addEventListener('config_update', (event) => {
         const data = JSON.parse(event.data);
         handleConfigUpdate(data);
+    });
+
+    newEventSource.addEventListener('request_log', (event) => {
+        const data = JSON.parse(event.data);
+        if (data?.op === 'upsert' && data.entry) {
+            upsertRequestLogEntry(data.entry);
+        }
     });
 }
 

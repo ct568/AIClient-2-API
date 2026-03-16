@@ -87,6 +87,10 @@ import {
     initTutorialManager
 } from './tutorial-manager.js';
 
+import {
+    initRequestLogsManager
+} from './request-logs-manager.js';
+
 /**
  * 加载初始数据
  */
@@ -124,6 +128,7 @@ function initApp() {
     initImageZoom(); // 初始化图片放大功能
     initPluginManager(); // 初始化插件管理功能
     initTutorialManager(); // 初始化教程管理功能
+    initRequestLogsManager(); // 初始化请求日志管理功能
     initMobileMenu(); // 初始化移动端菜单
     loadInitialData();
     
